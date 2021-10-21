@@ -18,8 +18,10 @@ var ended = false		# 終局状態
 var next				# TILE_O or TILE_X
 var bits_O = 0			# O 状態ビットボード
 var bits_X = 0			# X 状態ビットボード
+var is_victory_table = []		# ビットボード → ３目並びがあるか？
 
 func _ready():
+	build_victory_table()
 	init_board()
 	pass # Replace with function body.
 func init_board():
@@ -38,8 +40,25 @@ func set_cell(x : int, y : int, v : int):
 		bits_O |= mask
 	else:
 		bits_X |= mask
+func is_victory_basic(bits) -> bool:	# 勝利状態か？
+	if (bits & 0b111000000) == 0b111000000: return true
+	if (bits & 0b000111000) == 0b000111000: return true
+	if (bits & 0b000000111) == 0b000000111: return true
+	if (bits & 0b100100100) == 0b100100100: return true
+	if (bits & 0b010010010) == 0b010010010: return true
+	if (bits & 0b001001001) == 0b001001001: return true
+	if (bits & 0b100010001) == 0b100010001: return true
+	if (bits & 0b001010100) == 0b001010100: return true
+	return false
+func build_victory_table():
+	is_victory_table.resize(N_2_POWER_9)
+	for bits in range(N_2_POWER_9):
+		is_victory_table[bits] = is_victory_basic(bits)
 func _input(event):
 	if event is InputEventMouseButton && event.is_pressed():
+		if is_victory_table[bits_O] || is_victory_table[bits_O] || (bits_O | bits_X) == ALL_BITS:
+			init_board()
+			return
 		var pos = $Board/TileMap.get_local_mouse_position()
 		var map = $Board/TileMap.world_to_map(pos)
 		print(map)
