@@ -23,6 +23,7 @@ var is_victory_table = []		# ビットボード → ３目並びがあるか？
 func _ready():
 	build_victory_table()
 	init_board()
+	update_nextLabel()
 	pass # Replace with function body.
 func init_board():
 	ended = false
@@ -54,17 +55,30 @@ func build_victory_table():
 	is_victory_table.resize(N_2_POWER_9)
 	for bits in range(N_2_POWER_9):
 		is_victory_table[bits] = is_victory_basic(bits)
+func update_nextLabel():
+	if is_victory_table[bits_O]:
+		$NextLabel.text = "O won"
+	elif is_victory_table[bits_X]:
+		$NextLabel.text = "X won"
+	elif (bits_O | bits_X) == ALL_BITS:
+		$NextLabel.text = "draw"
+	elif next == TILE_O:
+		$NextLabel.text = "Next: O"
+	else:
+		$NextLabel.text = "Next: X"
+		
 func _input(event):
-	if event is InputEventMouseButton && event.is_pressed():
+	if event is InputEventMouseButton && event.is_pressed():	# マウスクリックイベント
 		if is_victory_table[bits_O] || is_victory_table[bits_O] || (bits_O | bits_X) == ALL_BITS:
 			init_board()
-			return
-		var pos = $Board/TileMap.get_local_mouse_position()
-		var map = $Board/TileMap.world_to_map(pos)
-		print(map)
-		if map.x < 0 || map.x >= N_HORZ || map.y < 0 || map.y >= N_VERT: return
-		set_cell(map.x, map.y, next)
-		next = (TILE_O + TILE_X) - next			# 手番交代
+		else:
+			var pos = $Board/TileMap.get_local_mouse_position()
+			var map = $Board/TileMap.world_to_map(pos)
+			print(map)
+			if map.x < 0 || map.x >= N_HORZ || map.y < 0 || map.y >= N_VERT: return
+			set_cell(map.x, map.y, next)
+			next = (TILE_O + TILE_X) - next			# 手番交代
+		update_nextLabel()
 		
 func _process(delta):
 	pass
