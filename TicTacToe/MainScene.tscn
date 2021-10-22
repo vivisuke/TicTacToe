@@ -84,7 +84,7 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[node name="RxR100Button" type="Button" parent="."]
+[node name="RxRx100Button" type="Button" parent="."]
 margin_left = 441.0
 margin_top = 12.0
 margin_right = 565.0
@@ -95,4 +95,16 @@ __meta__ = {
 "_edit_use_anchors_": false
 }
 
-[connection signal="pressed" from="RxR100Button" to="." method="_on_RxR100Button_pressed"]
+[node name="AIxAIx100Button" type="Button" parent="."]
+margin_left = 441.0
+margin_top = 53.0
+margin_right = 565.0
+margin_bottom = 78.0
+custom_fonts/font = SubResource( 3 )
+text = "AI x AI 100"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[connection signal="pressed" from="RxRx100Button" to="." method="_on_RxRx100Button_pressed"]
+[connection signal="pressed" from="AIxAIx100Button" to="." method="_on_AIxAIx100Button_pressed"]

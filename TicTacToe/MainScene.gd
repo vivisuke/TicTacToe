@@ -16,6 +16,7 @@ enum {
 enum {
 	MODE_NONE = 0,
 	MODE_RAND_RAND,
+	MODE_AI_AI,			# AI 自己対戦学習
 }
 var mode = MODE_NONE
 var nEpisode = 0
@@ -65,12 +66,14 @@ func make_Q(qix):
 	Q[qix] = []
 	var empty = ~(bits_O | bits_X)		# 1 for EMPTY
 	var mask = 1
-	for i in range(9):
-		if next == TILE_O:		# O の手番
+	if next == TILE_O:		# O の手番
+		for i in range(9):
 			Q[qix].push_back(1.0 if (empty&mask) != 0 else -9.999)
-		else:					# X の手番
+			mask <<= 1
+	else:					# X の手番
+		for i in range(9):
 			Q[qix].push_back(-1.0 if (empty&mask) != 0 else 9.999)
-		mask <<= 1
+			mask <<= 1
 func update_qvLabels():		# 現状態の各行動のQ値を表示
 	var qix = bb_to_qix(bits_O, bits_X)
 	make_Q(qix)
@@ -153,38 +156,113 @@ func get_empty_list():	# 空欄箇所リストを返す
 				lst.push_back(ix)
 			ix += 1
 	return lst
+func modeRandRand():
+	nEpisode += 1
+	$EpiNumLabel.text = "#%d" % nEpisode
+	init_board()
+	while true:
+		var lst = get_empty_list()
+		var ix = lst[rng.randi_range(0, lst.size() - 1)]
+		var t = ix_to_xy(ix)
+		set_cell(t[0], t[1], next)
+		next = (TILE_O + TILE_X) - next			# 手番交代
+		if is_victory_table[bits_O]:
+			nOwon += 1
+			break;
+		elif is_victory_table[bits_X]:
+			nXwon += 1
+			break;
+		elif is_draw():
+			nDraw += 1
+			break;
+	update_nextLabel()
+	update_qvLabels()
+	nEpisodeRest -= 1
+	if !nEpisodeRest:
+		mode = MODE_NONE
+		print("nOwon = %d (%.1f%%)" % [nOwon, nOwon * 100.0/nEpisode])
+		print("nXwon = %d (%.1f%%)" % [nXwon, nXwon * 100.0/nEpisode])
+		print("nDraw = %d (%.1f%%)" % [nDraw, nDraw * 100.0/nEpisode])
+func nextMove(qix):
+	var empty = ~(bits_O | bits_X)		# 1 for EMPTY
+	var lst = []
+	var mask = 1
+	if next == TILE_O:		# O の手番、最大Q値の行動を選択
+		var maxq = -9
+		for i in range(Q[qix].size()):
+			if (empty & mask) != 0:
+				if Q[qix][i] > maxq:
+					lst = [i]
+					maxq = Q[qix][i]
+				elif Q[qix][i] == maxq:
+					lst.push_back(i)
+			mask <<= 1
+	else:					# X の手番、最小Q値の行動を選択
+		var minq = 9
+		for i in range(Q[qix].size()):
+			if (empty & mask) != 0:
+				if Q[qix][i] < minq:
+					lst = [i]
+					minq = Q[qix][i]
+				elif Q[qix][i] == minq:
+					lst.push_back(i)
+			mask <<= 1
+	assert( !lst.empty() )
+	if lst.size() == 1:
+		return lst[0]
+	else:
+		return lst[rng.randi_range(0, lst.size() - 1)]
+func modeAiAi():
+	nEpisode += 1
+	$EpiNumLabel.text = "#%d" % nEpisode
+	init_board()
+	while true:
+		var ef = false		# 終局フラグ
+		var qix = bb_to_qix(bits_O, bits_X)
+		make_Q(qix)
+		var ix = nextMove(qix)
+		var t = ix_to_xy(ix)
+		set_cell(t[0], t[1], next)
+		next = (TILE_O + TILE_X) - next			# 手番交代
+		var reward = 0.0
+		if is_victory_table[bits_O]:
+			nOwon += 1
+			reward = 1.0
+			ef = true
+		elif is_victory_table[bits_X]:
+			nXwon += 1
+			reward = -1.0
+			ef = true
+		elif is_draw():
+			nDraw += 1
+			ef = true
+		var qix2 = bb_to_qix(bits_O, bits_X)
+		make_Q(qix2)
+		var minmaxQ = 0.0
+		if !ef:
+			if next == TILE_O:
+				minmaxQ = Q[qix2].max()
+			else:
+				minmaxQ = Q[qix2].min()
+		Q[qix][ix] += ALPHA * (reward + GAMMA * minmaxQ - Q[qix][ix])
+		if ef: break
+	update_nextLabel()
+	update_qvLabels()
+	nEpisodeRest -= 1
+	if !nEpisodeRest:
+		mode = MODE_NONE
+		print("nOwon = %d (%.1f%%)" % [nOwon, nOwon * 100.0/nEpisode])
+		print("nXwon = %d (%.1f%%)" % [nXwon, nXwon * 100.0/nEpisode])
+		print("nDraw = %d (%.1f%%)" % [nDraw, nDraw * 100.0/nEpisode])
 func _process(delta):
 	if mode == MODE_RAND_RAND:
-		nEpisode += 1
-		$EpiNumLabel.text = "#%d" % nEpisode
-		init_board()
-		while true:
-			var lst = get_empty_list()
-			var ix = lst[rng.randi_range(0, lst.size() - 1)]
-			var t = ix_to_xy(ix)
-			set_cell(t[0], t[1], next)
-			next = (TILE_O + TILE_X) - next			# 手番交代
-			if is_victory_table[bits_O]:
-				nOwon += 1
-				break;
-			elif is_victory_table[bits_X]:
-				nXwon += 1
-				break;
-			elif is_draw():
-				nDraw += 1
-				break;
-		update_nextLabel()
-		update_qvLabels()
-		nEpisodeRest -= 1
-		if !nEpisodeRest:
-			mode = MODE_NONE
-			print("nOwon = %d (%.1f%%)" % [nOwon, nOwon * 100.0/nEpisode])
-			print("nXwon = %d (%.1f%%)" % [nXwon, nXwon * 100.0/nEpisode])
-			print("nDraw = %d (%.1f%%)" % [nDraw, nDraw * 100.0/nEpisode])
+		modeRandRand()
+	elif mode == MODE_AI_AI:
+		modeAiAi()
 	pass
 
 
-func _on_RxR100Button_pressed():
+func _on_RxRx100Button_pressed():
 	nEpisode = 0
 	nEpisodeRest = 100
 	nOwon = 0
@@ -192,3 +270,13 @@ func _on_RxR100Button_pressed():
 	nDraw = 0
 	mode = MODE_RAND_RAND
 	pass
+
+
+func _on_AIxAIx100Button_pressed():
+	nEpisode = 0
+	nEpisodeRest = 100
+	nOwon = 0
+	nXwon = 0
+	nDraw = 0
+	mode = MODE_AI_AI
+	pass # Replace with function body.
