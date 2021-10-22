@@ -13,6 +13,16 @@ enum {
 	TILE_O,
 	TILE_X,
 }
+enum {
+	MODE_NONE = 0,
+	MODE_RAND_RAND,
+}
+var mode = MODE_NONE
+var nEpisode = 0
+var nEpisodeRest = 0
+var nOwon = 0			# O 勝数
+var nXwon = 0			# X 勝数
+var nDraw = 0			# 引き分け数
 var started = false
 var ended = false		# 終局状態
 var next				# TILE_O or TILE_X
@@ -106,12 +116,14 @@ func build_victory_table():
 	is_victory_table.resize(N_2_POWER_9)
 	for bits in range(N_2_POWER_9):
 		is_victory_table[bits] = is_victory_basic(bits)
+func is_draw():
+	return (bits_O | bits_X) == ALL_BITS
 func update_nextLabel():
 	if is_victory_table[bits_O]:
 		$NextLabel.text = "O won"
 	elif is_victory_table[bits_X]:
 		$NextLabel.text = "X won"
-	elif (bits_O | bits_X) == ALL_BITS:
+	elif is_draw():		# 引き分け？
 		$NextLabel.text = "draw"
 	elif next == TILE_O:
 		$NextLabel.text = "Next: O"
@@ -120,7 +132,7 @@ func update_nextLabel():
 		
 func _input(event):
 	if event is InputEventMouseButton && event.is_pressed():	# マウスクリックイベント
-		if is_victory_table[bits_O] || is_victory_table[bits_O] || (bits_O | bits_X) == ALL_BITS:
+		if is_victory_table[bits_O] || is_victory_table[bits_O] || is_draw():
 			init_board()
 		else:
 			var pos = $Board/TileMap.get_local_mouse_position()
@@ -132,5 +144,49 @@ func _input(event):
 		update_qvLabels()		# Q値表示
 		update_nextLabel()		# 次の手番ラベル更新
 		
+func get_empty_list():	# 空欄箇所リストを返す
+	var lst = []
+	var ix = 0
+	for y in N_VERT:
+		for x in N_HORZ:
+			if $Board/TileMap.get_cell(x, y) == TILE_EMPTY:
+				lst.push_back(ix)
+			ix += 1
+	return lst
 func _process(delta):
+	if mode == MODE_RAND_RAND:
+		nEpisode += 1
+		init_board()
+		while true:
+			var lst = get_empty_list()
+			var ix = lst[rng.randi_range(0, lst.size() - 1)]
+			var t = ix_to_xy(ix)
+			set_cell(t[0], t[1], next)
+			if is_victory_table[bits_O]:
+				nOwon += 1
+				break;
+			elif is_victory_table[bits_X]:
+				nXwon += 1
+				break;
+			elif is_draw():
+				nDraw += 1
+				break;
+			next = (TILE_O + TILE_X) - next			# 手番交代
+		update_nextLabel()
+		nEpisodeRest -= 1
+		if !nEpisodeRest:
+			mode = MODE_NONE
+			print("nOwon = %d (%.1f%%)" % [nOwon, nOwon * 100.0/nEpisode])
+			print("nXwon = %d (%.1f%%)" % [nXwon, nXwon * 100.0/nEpisode])
+			print("nDraw = %d (%.1f%%)" % [nDraw, nDraw * 100.0/nEpisode])
+	pass
+
+
+func _on_RxR100Button_pressed():
+	nEpisode = 0
+	nEpisodeRest = 100
+	nOwon = 0
+	nXwon = 0
+	nDraw = 0
+	mode = MODE_RAND_RAND
 	pass
