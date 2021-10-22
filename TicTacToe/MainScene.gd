@@ -60,7 +60,7 @@ func init_qvlabels():
 			add_child(label)
 			qvalLabel.push_back(label)
 func make_Q(qix):
-	print("make_Q(%d)" % qix)
+	#print("make_Q(%d)" % qix)
 	if Q[qix] != null: return
 	Q[qix] = []
 	var empty = ~(bits_O | bits_X)		# 1 for EMPTY
@@ -137,7 +137,7 @@ func _input(event):
 		else:
 			var pos = $Board/TileMap.get_local_mouse_position()
 			var map = $Board/TileMap.world_to_map(pos)
-			print(map)
+			#print(map)
 			if map.x < 0 || map.x >= N_HORZ || map.y < 0 || map.y >= N_VERT: return
 			set_cell(map.x, map.y, next)
 			next = (TILE_O + TILE_X) - next			# 手番交代
@@ -156,12 +156,14 @@ func get_empty_list():	# 空欄箇所リストを返す
 func _process(delta):
 	if mode == MODE_RAND_RAND:
 		nEpisode += 1
+		$EpiNumLabel.text = "#%d" % nEpisode
 		init_board()
 		while true:
 			var lst = get_empty_list()
 			var ix = lst[rng.randi_range(0, lst.size() - 1)]
 			var t = ix_to_xy(ix)
 			set_cell(t[0], t[1], next)
+			next = (TILE_O + TILE_X) - next			# 手番交代
 			if is_victory_table[bits_O]:
 				nOwon += 1
 				break;
@@ -171,8 +173,8 @@ func _process(delta):
 			elif is_draw():
 				nDraw += 1
 				break;
-			next = (TILE_O + TILE_X) - next			# 手番交代
 		update_nextLabel()
+		update_qvLabels()
 		nEpisodeRest -= 1
 		if !nEpisodeRest:
 			mode = MODE_NONE
