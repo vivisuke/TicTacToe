@@ -71,11 +71,13 @@ func make_Q(qix):
 	var mask = 1
 	if next == TILE_O:		# O の手番
 		for i in range(9):
-			Q[qix].push_back(1.0 if (empty&mask) != 0 else -9.999)
+			Q[qix].push_back(0.0 if (empty&mask) != 0 else -9.999)
+			#Q[qix].push_back(1.0 if (empty&mask) != 0 else -9.999)
 			mask <<= 1
 	else:					# X の手番
 		for i in range(9):
-			Q[qix].push_back(-1.0 if (empty&mask) != 0 else 9.999)
+			Q[qix].push_back(0.0 if (empty&mask) != 0 else 9.999)
+			#Q[qix].push_back(-1.0 if (empty&mask) != 0 else 9.999)
 			mask <<= 1
 func update_qvLabels():		# 現状態の各行動のQ値を表示
 	var qix = bb_to_qix(bits_O, bits_X)
@@ -138,7 +140,7 @@ func update_nextLabel():
 		
 func _input(event):
 	if event is InputEventMouseButton && event.is_pressed():	# マウスクリックイベント
-		if is_victory_table[bits_O] || is_victory_table[bits_O] || is_draw():
+		if is_victory_table[bits_O] || is_victory_table[bits_X] || is_draw():
 			init_board()
 		else:
 			var pos = $Board/TileMap.get_local_mouse_position()
@@ -159,13 +161,15 @@ func get_empty_list():	# 空欄箇所リストを返す
 				lst.push_back(ix)
 			ix += 1
 	return lst
+func nextRandMove():
+	var lst = get_empty_list()
+	return lst[rng.randi_range(0, lst.size() - 1)]
 func modeRandRand():
 	nEpisode += 1
 	$EpiNumLabel.text = "#%d" % nEpisode
 	init_board()
 	while true:
-		var lst = get_empty_list()
-		var ix = lst[rng.randi_range(0, lst.size() - 1)]
+		var ix = nextRandMove()
 		var t = ix_to_xy(ix)
 		set_cell(t[0], t[1], next)
 		next = (TILE_O + TILE_X) - next			# 手番交代
@@ -186,7 +190,7 @@ func modeRandRand():
 		print("\nnOwon = %d (%.1f%%)" % [nOwon, nOwon * 100.0/nEpisode])
 		print("nXwon = %d (%.1f%%)" % [nXwon, nXwon * 100.0/nEpisode])
 		print("nDraw = %d (%.1f%%)" % [nDraw, nDraw * 100.0/nEpisode])
-func nextMove(qix):
+func nextAIMove(qix):
 	var empty = ~(bits_O | bits_X)		# 1 for EMPTY
 	var lst = []
 	var mask = 1
@@ -226,7 +230,7 @@ func modeAiRand():		# AI vs RAND、学習あり
 		make_Q(qix)
 		var ix
 		if AIturn:
-			ix = nextMove(qix)
+			ix = nextAIMove(qix)
 		else:
 			var lst = get_empty_list()
 			ix = lst[rng.randi_range(0, lst.size() - 1)]
@@ -284,7 +288,7 @@ func modeAiAi():
 		var ef = false		# 終局フラグ
 		var qix = bb_to_qix(bits_O, bits_X)
 		make_Q(qix)
-		var ix = nextMove(qix)
+		var ix = nextAIMove(qix) if rng.randf_range(0, 1.0) <= 0.9 else nextRandMove()
 		var t = ix_to_xy(ix)
 		set_cell(t[0], t[1], next)
 		next = (TILE_O + TILE_X) - next			# 手番交代
@@ -351,6 +355,16 @@ func _on_AIxAIx100Button_pressed():
 func _on_AIxRx100Button_pressed():
 	nEpisode = 0
 	nEpisodeRest = 100
+	nAIwon = 0
+	nRANDwon = 0
+	nDraw = 0
+	mode = MODE_AI_RAND
+	pass # Replace with function body.
+
+
+func _on_AIxRx1000Button_pressed():
+	nEpisode = 0
+	nEpisodeRest = 1000
 	nAIwon = 0
 	nRANDwon = 0
 	nDraw = 0
